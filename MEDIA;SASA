@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Media Pembelajaran Interaktif - Desain Grafis</title>
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f9f9f9; }
+header { padding: 20px; text-align: center; background: #4a90e2; color: white; }
+main { padding: 20px; max-width: 1000px; margin: auto; }
+button { cursor: pointer; margin:5px; padding:10px 15px; border:none; border-radius:5px; }
+.quiz-container, .game-container, .ranking-container { margin-top:20px; }
+.memory-grid { display: grid; grid-template-columns: repeat(5, 80px); gap:10px; justify-content:center; }
+.memory-card { width:80px; height:80px; background:#fff; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:2rem; cursor:pointer; user-select:none; box-shadow:0 5px 15px rgba(0,0,0,0.2); }
+.memory-card.flipped { background:#48bb78; color:white; }
+.memory-card.matched { background:#4299e1; color:white; pointer-events:none; }
+.answer-option { background:#fff; padding:10px; margin:5px 0; border-radius:5px; cursor:pointer; box-shadow:0 3px 10px rgba(0,0,0,0.1); }
+.answer-option.correct { background:#48bb78; color:white; }
+.answer-option.incorrect { background:#f56565; color:white; }
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:10px 20px; border-radius:8px; color:white; z-index:1000; box-shadow:0 5px 15px rgba(0,0,0,0.2); }
+#nameModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000; }
+.modal-content { background:white; padding:30px; border-radius:15px; text-align:center; max-width:400px; width:90%; }
+#progressBar { height:10px; background:#48bb78; width:0%; border-radius:5px; transition:0.3s; }
+</style>
+</head>
+<body>
+
+<audio id="backgroundMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop autoplay></audio>
+
+<header>
+<h1>Media Pembelajaran Interaktif</h1>
+<p>Belajar Desain Grafis dengan interaktif dan menyenangkan</p>
+<button onclick="bgMusic.pause()">⏸️ Pause Music</button>
+<button onclick="bgMusic.play()">▶️ Play Music</button>
+</header>
+
+<main>
+<!-- Materi -->
+<section>
+<h2>Materi</h2>
+<ul>
+<li>Elemen desain</li>
+<li>Prinsip desain</li>
+<li>Pengenalan software</li>
+</ul>
+</section>
+
+<!-- Contoh Desain -->
+<section>
+<h2>Contoh Desain</h2>
+<ul>
+<li>Poster</li>
+<li>Logo</li>
+<li>Layout majalah</li>
+</ul>
+</section>
+
+<!-- Kuis -->
+<section class="quiz-container">
+<h2>Kuis Singkat</h2>
+<div id="quizContent">
+<div id="questionText"></div>
+<div id="answerOptions"></div>
+<button id="prevQuizBtn" onclick="previousQuestion()">Sebelumnya</button>
+<button id="nextQuizBtn" onclick="nextQuestion()">Selanjutnya</button>
+<div id="progressBar"></div>
+</div>
+<div id="quizResult" style="display:none;">
+<h3>🎉 Kuis Selesai!</h3>
+<div id="finalScore"></div>
+<p id="scoreMessage"></p>
+<button onclick="restartQuiz()">Ulangi Kuis</button>
+</div>
+</section>
+
+<!-- Game Memory -->
+<section class="game-container">
+<h2>Game Memory Desain Grafis</h2>
+<div class="memory-grid" id="memoryGrid"></div>
+<p>Pasangan Ditemukan: <span id="gameScore">0/10</span> | Percobaan: <span id="gameAttempts">0</span></p>
+<div id="gameResult" style="display:none;">
+<h3>🎉 Game Selesai!</h3>
+<div id="finalGameScore"></div>
+<p id="gameScoreMessage"></p>
+<button onclick="restartGame()">Main Lagi</button>
+</div>
+</section>
+
+<!-- Ranking -->
+<section class="ranking-container">
+<h2>🏆 Papan Skor</h2>
+<table border="1" width="100%">
+<thead>
+<tr>
+<th>Peringkat</th>
+<th>Nama Pemain</th>
+<th>Skor Kuis</th>
+<th>Skor Game</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody id="rankingTableBody">
+<tr><td colspan="5">Belum ada data</td></tr>
+</tbody>
+</table>
+</section>
+
+<!-- Modal Nama -->
+<div id="nameModal">
+<div class="modal-content">
+<h3>Masukkan Nama Anda</h3>
+<input type="text" id="playerNameInput" placeholder="Nama..." maxlength="30">
+<button onclick="saveScore()">Simpan Skor</button>
+<button onclick="skipSaveScore()">Lewati</button>
+</div>
+</div>
+
+</main>
+
+<script>
+// BackSound
+const bgMusic = document.getElementById('backgroundMusic');
+
+// Toast
+function showToast(msg, color='#48bb78'){
+  const toast = document.createElement('div');
+  toast.className='toast';
+  toast.style.background=color;
+  toast.textContent=msg;
+  document.body.appendChild(toast);
+  setTimeout(()=>document.body.removeChild(toast),3000);
+}
+
+// Kuis
+const quizData=[
+{question:"Media pembelajaran interaktif adalah…", options:["Media yang memungkinkan pengguna berinteraksi langsung dengan materi","Media yang tidak bisa diklik","Media yang hanya berbentuk buku","Media yang hanya berisi teks"], correct:0},
+{question:"Mengapa media interaktif cocok untuk desain grafis?", options:["Karena desain grafis hanya butuh tulisan","Karena membuat belajar menjadi lebih visual dan menarik","Karena desain grafis tidak membutuhkan contoh gambar","Karena tidak memerlukan komputer"], correct:1},
+{question:"Berikut ini bukan ciri media pembelajaran interaktif adalah…", options:["User bisa mengontrol materi","Ada tombol navigasi","Materi bisa memberikan umpan balik","Tidak bisa berinteraksi sama sekali"], correct:3}
+];
+let currentQuizQuestion=0, quizScore=0, selectedAnswer=null, quizAnswers=[];
+function displayQuestion(){
+  const q=quizData[currentQuizQuestion];
+  document.getElementById('questionText').textContent=q.question;
+  const container=document.getElementById('answerOptions');
+  container.innerHTML='';
+  q.options.forEach((opt,i)=>{
+    const div=document.createElement('div');
+    div.className='answer-option';
+    div.textContent=opt;
+    div.onclick=()=>selectAnswer(i,div);
+    container.appendChild(div);
+  });
+}
+function selectAnswer(idx,el){
+  if(selectedAnswer!==null)return;
+  selectedAnswer=idx;
+  quizAnswers[currentQuizQuestion]=idx;
+  const options=document.querySelectorAll('.answer-option');
+  options.forEach((opt,i)=>{
+    opt.style.pointerEvents='none';
+    if(i===quizData[currentQuizQuestion].correct){
+      opt.classList.add('correct');
+    }else if(i===selectedAnswer){
+      opt.classList.add('incorrect');
+    }
+  });
+  if(selectedAnswer===quizData[currentQuizQuestion].correct){
+    quizScore++;
+    showToast('✔️ Jawaban Benar!');
+  }else{
+    showToast('❌ Jawaban Salah!');
+  }
+}
+function nextQuestion(){
+  if(selectedAnswer===null){showToast('Pilih jawaban dulu!','#ed8936'); return;}
+  if(currentQuizQuestion<quizData.length-1){
+    currentQuizQuestion++;
+    displayQuestion();
+    selectedAnswer=null;
+  }else{
+    document.getElementById('quizContent').style.display='none';
+    document.getElementById('quizResult').style.display='block';
+    document.getElementById('finalScore').textContent=`${quizScore}/${quizData.length}`;
+  }
+}
+function previousQuestion(){if(currentQuizQuestion>0){currentQuizQuestion--;displayQuestion();selectedAnswer=null;}}
+function restartQuiz(){currentQuizQuestion=0;quizScore=0;selectedAnswer=null;quizAnswers=[];document.getElementById('quizContent').style.display='block';document.getElementById('quizResult').style.display='none';displayQuestion();}
+displayQuestion();
+
+// Game Memory (Sederhana)
+const memoryCardPairs=[
+{ id:1, icon:'🖱️'},{ id:2, icon:'⌨️'},{ id:3, icon:'💻'},{ id:4, icon:'🎨'},{ id:5, icon:'⭕'},{ id:6, icon:'◼️'},{ id:7, icon:'🔺'},{ id:8, icon:'✒️'},{ id:9, icon:'🌄'},{ id:10, icon:'📁'}
+];
+let memoryCards=[], flippedCards=[], matchedPairs=0, attempts=0, canFlip=true;
+function initializeGame(){
+  matchedPairs=0; attempts=0; flippedCards=[]; canFlip=true;
+  memoryCards=[];
+  memoryCardPairs.forEach(p=>{memoryCards.push({...p, uniqueId:p.id+'-1'}); memoryCards.push({...p, uniqueId:p.id+'-2'});});
+  memoryCards.sort(()=>Math.random()-0.5);
+  displayMemoryCards();
+}
+function displayMemoryCards(){
+  const grid=document.getElementById('memoryGrid'); grid.innerHTML='';
+  memoryCards.forEach((card,i)=>{
+    const div=document.createElement('div'); div.className='memory-card'; div.dataset.id=card.id; div.dataset.index=i;
+    div.innerHTML='?'; div.onclick=()=>flipCard(div,card);
+    grid.appendChild(div);
+  });
+}
+function flipCard(el,card){
+  if(!canFlip || el.classList.contains('flipped') || el.classList.contains('matched')) return;
+  el.classList.add('flipped'); el.textContent=card.icon;
+  flippedCards.push({element:el,card:card});
+  if(flippedCards.length===2){
+    canFlip=false; attempts++; document.getElementById('gameAttempts').textContent=attempts;
+    setTimeout(checkMatch,800);
+  }
+}
+function checkMatch(){
+  const [first,second]=flippedCards;
+  if(first.card.id===second.card.id){
+    first.element.classList.add('matched'); second.element.classList.add('matched');
+    matchedPairs++; document.getElementById('gameScore').textContent=`${matchedPairs}/10`;
+    showToast('✔️ Cocok!');
+    flippedCards=[]; canFlip=true;
+  }else{
+    showToast('❌ Tidak cocok!','#f56565');
+    setTimeout(()=>{first.element.classList.remove('flipped'); first.element.textContent='?'; second.element.classList.remove('flipped'); second.element.textContent='?'; flippedCards=[]; canFlip=true;},1000);
+  }
+}
+function restartGame(){initializeGame();}
+initializeGame();
+
+// Ranking (sementara dummy)
+const allScores=[];
+function saveScore(){
+  const name=document.getElementById('playerNameInput').value.trim();
+  if(!name){showToast('Masukkan nama','#ed8936'); return;}
+  allScores.push({player_name:name, quiz_score:quizScore, game_score:matchedPairs});
+  document.getElementById('nameModal').style.display='none';
+  updateRankingDisplay();
+}
+function skipSaveScore(){document.getElementById('nameModal').style.display='none';}
+function updateRankingDisplay(){
+  const tbody=document.getElementById('rankingTableBody'); tbody.innerHTML='';
+  allScores.forEach((s,i)=>{
+    const row=document.createElement('tr');
+    row.innerHTML=`<td>${i+1}</td><td>${s.player_name}</td><td>${s.quiz_score}</td><td>${s.game_score}</td><td>${s.quiz_score+s.game_score}</td>`;
+    tbody.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>
